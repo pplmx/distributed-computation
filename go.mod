@@ -15,4 +15,4 @@ require (
 	google.golang.org/protobuf v1.35.2 // indirect
 )
 
-replace github.com/pplmx/pb/dist => ../pb/dist
+// replace github.com/pplmx/pb/dist => ../pb/dist
