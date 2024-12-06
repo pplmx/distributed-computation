@@ -3,7 +3,7 @@ module github.com/pplmx/distributed-computation
 go 1.23.3
 
 require (
-	github.com/pplmx/pb/dist v0.0.0-20241206115342-2f22d4a3d6d2
+	github.com/pplmx/pb/dist v0.0.0-20241206125115-b0306a987a92
 	google.golang.org/grpc v1.68.1
 )
 
