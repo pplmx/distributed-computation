@@ -1,4 +1,4 @@
-module github.com/pplmx/dist_task
+module github.com/pplmx/distributed-computation
 
 go 1.23.3
 
