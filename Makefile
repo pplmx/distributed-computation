@@ -16,6 +16,10 @@ build:
 test:
 	@go test -v ./...
 
+# fmt
+fmt:
+	@goimports -l -w .
+
 # update my own pb
 up:
 	@go get -u github.com/pplmx/pb/dist

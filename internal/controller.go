@@ -3,11 +3,12 @@ package internal
 import (
 	"context"
 	"fmt"
-	pb "github.com/pplmx/pb/dist/v1"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"sync"
+
+	pb "github.com/pplmx/pb/dist/v1"
+	"google.golang.org/grpc"
 )
 
 type distributedTaskServer struct {

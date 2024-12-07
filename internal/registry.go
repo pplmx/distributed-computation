@@ -2,12 +2,13 @@ package internal
 
 import (
 	"context"
-	pb "github.com/pplmx/pb/dist/v1"
-	"google.golang.org/grpc"
 	"log"
 	"net"
 	"sync"
 	"time"
+
+	pb "github.com/pplmx/pb/dist/v1"
+	"google.golang.org/grpc"
 )
 
 type registryServer struct {

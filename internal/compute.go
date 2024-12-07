@@ -2,11 +2,12 @@ package internal
 
 import (
 	"context"
+	"log"
+	"time"
+
 	pb "github.com/pplmx/pb/dist/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"log"
-	"time"
 )
 
 type computeClient struct {
