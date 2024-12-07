@@ -10,21 +10,20 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+// computeClient wraps gRPC client and connection details for distributed task management
 type computeClient struct {
 	client     pb.DistributedTaskServiceClient
 	connection *grpc.ClientConn
 	nodeID     string
 }
 
-func newComputeClient(serverAddr string, nodeID string) (*computeClient, error) {
-	// Set up a connection to the server
-	conn, err := grpc.Dial(serverAddr,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	)
+// newComputeClient initializes a new gRPC client for distributed tasks
+func newComputeClient(serverAddr, nodeID string) (*computeClient, error) {
+	// Set up a connection to the server with error handling
+	conn, err := grpc.Dial(serverAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}
-
 	client := pb.NewDistributedTaskServiceClient(conn)
 	return &computeClient{
 		client:     client,
@@ -33,16 +32,19 @@ func newComputeClient(serverAddr string, nodeID string) (*computeClient, error) 
 	}, nil
 }
 
+// submitTask submits a compute task to the server and starts a watcher for updates
 func (c *computeClient) submitTask(taskType pb.Task_TaskType, payload []byte) error {
-	// Create a new task
+	// Context with timeout to prevent indefinite blocking
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	task := &pb.Task{
 		Name:    "Compute Task",
 		Type:    taskType,
 		Payload: payload,
 	}
 
-	// Submit the task
-	resp, err := c.client.SubmitTask(context.Background(), &pb.SubmitTaskRequest{
+	resp, err := c.client.SubmitTask(ctx, &pb.SubmitTaskRequest{
 		Task:            task,
 		RequesterNodeId: c.nodeID,
 	})
@@ -50,45 +52,50 @@ func (c *computeClient) submitTask(taskType pb.Task_TaskType, payload []byte) er
 		return err
 	}
 
-	log.Printf("Task submitted successfully. Task ID: %s", resp.TaskId)
+	log.Printf("[INFO] Task submitted successfully. Task ID: %s", resp.TaskId)
 
-	// Watch the task
+	// Start watching task status in a goroutine
 	go c.watchTask(resp.TaskId)
-
 	return nil
 }
 
+// watchTask listens for updates on a task's status
 func (c *computeClient) watchTask(taskID string) {
-	// Create a stream to watch task status
-	stream, err := c.client.WatchTasks(context.Background(), &pb.WatchTasksRequest{
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	stream, err := c.client.WatchTasks(ctx, &pb.WatchTasksRequest{
 		NodeId:  c.nodeID,
 		TaskIds: []string{taskID},
 	})
 	if err != nil {
-		log.Printf("Error creating watch stream: %v", err)
+		log.Printf("[ERROR] Failed to create watch stream: %v", err)
 		return
 	}
 
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
-			log.Printf("Error receiving task update: %v", err)
+			log.Printf("[ERROR] Error receiving task update: %v", err)
 			return
 		}
 
-		switch event := resp.Event.(type) {
-		case *pb.WatchTasksResponse_TaskStatusChange:
-			log.Printf("Task %s status changed from %v to %v",
-				event.TaskStatusChange.Task.Id,
-				event.TaskStatusChange.PreviousStatus,
-				event.TaskStatusChange.CurrentStatus,
+		if statusChange, ok := resp.Event.(*pb.WatchTasksResponse_TaskStatusChange); ok {
+			log.Printf("[INFO] Task %s status changed: %v -> %v",
+				statusChange.TaskStatusChange.Task.Id,
+				statusChange.TaskStatusChange.PreviousStatus,
+				statusChange.TaskStatusChange.CurrentStatus,
 			)
 		}
 	}
 }
 
+// cancelTask attempts to cancel a running task
 func (c *computeClient) cancelTask(taskID string) error {
-	resp, err := c.client.CancelTask(context.Background(), &pb.CancelTaskRequest{
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	resp, err := c.client.CancelTask(ctx, &pb.CancelTaskRequest{
 		TaskId:          taskID,
 		RequesterNodeId: c.nodeID,
 	})
@@ -97,37 +104,34 @@ func (c *computeClient) cancelTask(taskID string) error {
 	}
 
 	if resp.Success {
-		log.Printf("Task %s canceled successfully", taskID)
+		log.Printf("[INFO] Task %s canceled successfully", taskID)
 	} else {
-		log.Printf("Failed to cancel task: %s", resp.ErrorMessage)
+		log.Printf("[ERROR] Failed to cancel task %s: %s", taskID, resp.ErrorMessage)
 	}
-
 	return nil
 }
 
+// close safely closes the gRPC connection
 func (c *computeClient) close() {
 	if c.connection != nil {
 		c.connection.Close()
 	}
 }
 
+// StartCompute demonstrates a complete lifecycle of task submission and observation
 func StartCompute() {
-	// Create a compute client
 	client, err := newComputeClient("localhost:50051", "compute-node-1")
 	if err != nil {
-		log.Fatalf("Failed to create compute client: %v", err)
+		log.Fatalf("[FATAL] Failed to create compute client: %v", err)
 	}
 	defer client.close()
 
-	// Submit a compute task
-	err = client.submitTask(
-		pb.Task_TASK_TYPE_COMPUTE,
-		[]byte("sample compute payload"),
-	)
+	payload := []byte("sample compute payload")
+	err = client.submitTask(pb.Task_TASK_TYPE_COMPUTE, payload)
 	if err != nil {
-		log.Fatalf("Failed to submit task: %v", err)
+		log.Fatalf("[FATAL] Failed to submit task: %v", err)
 	}
 
-	// Keep the client running to observe task updates
-	time.Sleep(1 * time.Minute)
+	log.Println("[INFO] Compute client is observing task updates")
+	time.Sleep(1 * time.Minute) // Simulate runtime to keep the application alive
 }
