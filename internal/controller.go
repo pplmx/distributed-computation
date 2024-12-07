@@ -112,7 +112,7 @@ func newDistributedTaskServer() *distributedTaskServer {
 	}
 }
 
-func main() {
+func StartController() {
 	// Create a gRPC server
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {

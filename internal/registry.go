@@ -7,8 +7,9 @@ import (
 	"sync"
 	"time"
 
-	pb "github.com/pplmx/pb/dist/v1"
 	"google.golang.org/grpc"
+
+	pb "github.com/pplmx/pb/dist/v1"
 )
 
 type registryServer struct {
@@ -135,7 +136,7 @@ func newRegistryServer() *registryServer {
 	}
 }
 
-func main() {
+func StartRegistry() {
 	// Create a gRPC server
 	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {

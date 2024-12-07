@@ -111,7 +111,7 @@ func (c *computeClient) close() {
 	}
 }
 
-func main() {
+func StartCompute() {
 	// Create a compute client
 	client, err := newComputeClient("localhost:50051", "compute-node-1")
 	if err != nil {
