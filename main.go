@@ -2,9 +2,9 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/pplmx/distributed-computation/internal"
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
@@ -15,15 +15,15 @@ func main() {
 	// Check which service to start
 	switch *serviceType {
 	case "compute":
-		log.Println("Starting Compute Service")
+		log.Info().Msg("Starting Compute Service")
 		internal.StartCompute()
 	case "registry":
-		log.Println("Starting Registry Service")
+		log.Info().Msg("Starting Registry Service")
 		internal.StartRegistry()
 	case "controller":
-		log.Println("Starting Controller Service")
+		log.Info().Msg("Starting Controller Service")
 		internal.StartController()
 	default:
-		log.Fatalf("Invalid service type. Use one of: compute, registry, controller")
+		log.Fatal().Msg("Invalid service type. Use one of: compute, registry, controller")
 	}
 }

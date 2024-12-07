@@ -3,9 +3,10 @@ package internal
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"sync"
+
+	"github.com/rs/zerolog/log"
 
 	pb "github.com/pplmx/pb/dist/v1"
 	"google.golang.org/grpc"
@@ -34,7 +35,7 @@ func (s *distributedTaskServer) SubmitTask(ctx context.Context, req *pb.SubmitTa
 	// Store the task
 	s.tasks[req.Task.Id] = req.Task
 
-	log.Printf("Task submitted: %s (Type: %v)", req.Task.Id, req.Task.Type)
+	log.Info().Msg(fmt.Sprintf("Task submitted: %s (Type: %v)", req.Task.Id, req.Task.Type))
 
 	return &pb.SubmitTaskResponse{
 		Accepted: true,
@@ -96,7 +97,7 @@ func (s *distributedTaskServer) CancelTask(ctx context.Context, req *pb.CancelTa
 	// Only cancel tasks that are pending or running
 	if task.Status == pb.Task_TASK_STATUS_PENDING || task.Status == pb.Task_TASK_STATUS_RUNNING {
 		task.Status = pb.Task_TASK_STATUS_CANCELED
-		log.Printf("Task canceled: %s", req.TaskId)
+		log.Info().Msg(fmt.Sprintf("Task canceled: %s", req.TaskId))
 		return &pb.CancelTaskResponse{Success: true}, nil
 	}
 
@@ -116,14 +117,14 @@ func StartController() {
 	// Create a gRPC server
 	lis, err := net.Listen("tcp", ":50051")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatal().Msg(fmt.Sprintf("Failed to listen: %v", err))
 	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterDistributedTaskServiceServer(grpcServer, newDistributedTaskServer())
 
-	log.Println("Distributed Task Service started on :50051")
+	log.Info().Msg("Distributed Task Service started on :50051")
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		log.Fatal().Msg(fmt.Sprintf("Failed to serve: %v", err))
 	}
 }

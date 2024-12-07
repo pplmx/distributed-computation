@@ -2,10 +2,12 @@ package internal
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net"
 	"sync"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"google.golang.org/grpc"
 
@@ -44,7 +46,7 @@ func (s *registryServer) Register(ctx context.Context, req *pb.RegisterRequest) 
 	s.nodes[node.Id] = node
 	s.nodeLastHeartbeat[node.Id] = time.Now()
 
-	log.Printf("Node registered: %s (Address: %s:%d)", node.Id, node.Address, node.Port)
+	log.Info().Msg(fmt.Sprintf("Node registered: %s (Address: %s:%d)", node.Id, node.Address, node.Port))
 
 	return &pb.RegisterResponse{Success: true}, nil
 }
@@ -113,7 +115,7 @@ func (s *registryServer) checkNodeHeartbeats(stream pb.RegistryService_WatchRegi
 				}
 
 				if err := stream.Send(shutdownEvent); err != nil {
-					log.Printf("Error sending shutdown event: %v", err)
+					log.Error().Msg(fmt.Sprintf("Error sending shutdown event: %v", err))
 				}
 			}
 		}
@@ -122,11 +124,11 @@ func (s *registryServer) checkNodeHeartbeats(stream pb.RegistryService_WatchRegi
 
 func (s *registryServer) notifyNodeStatusChange(node *pb.Node, oldStatus pb.Node_NodeStatus) {
 	// In a real implementation, this would broadcast to interested parties
-	log.Printf("Node %s status changed from %v to %v",
+	log.Info().Msg(fmt.Sprintf("Node %s status changed from %v to %v",
 		node.Id,
 		oldStatus,
 		node.Status,
-	)
+	))
 }
 
 func newRegistryServer() *registryServer {
@@ -140,14 +142,14 @@ func StartRegistry() {
 	// Create a gRPC server
 	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
-		log.Fatalf("Failed to listen: %v", err)
+		log.Fatal().Msg(fmt.Sprintf("Failed to listen: %v", err))
 	}
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterRegistryServiceServer(grpcServer, newRegistryServer())
 
-	log.Println("Registry Service started on :50052")
+	log.Info().Msg("Registry Service started on :50052")
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("Failed to serve: %v", err)
+		log.Fatal().Msg(fmt.Sprintf("Failed to serve: %v", err))
 	}
 }

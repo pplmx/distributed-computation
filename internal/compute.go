@@ -2,8 +2,10 @@ package internal
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	pb "github.com/pplmx/pb/dist/v1"
 	"google.golang.org/grpc"
@@ -52,7 +54,7 @@ func (c *computeClient) submitTask(taskType pb.Task_TaskType, payload []byte) er
 		return err
 	}
 
-	log.Printf("[INFO] Task submitted successfully. Task ID: %s", resp.TaskId)
+	log.Info().Msg(fmt.Sprintf("Task submitted successfully. Task ID: %s", resp.TaskId))
 
 	// Start watching task status in a goroutine
 	go c.watchTask(resp.TaskId)
@@ -69,23 +71,23 @@ func (c *computeClient) watchTask(taskID string) {
 		TaskIds: []string{taskID},
 	})
 	if err != nil {
-		log.Printf("[ERROR] Failed to create watch stream: %v", err)
+		log.Error().Msg(fmt.Sprintf("Failed to create watch stream: %v", err))
 		return
 	}
 
 	for {
 		resp, err := stream.Recv()
 		if err != nil {
-			log.Printf("[ERROR] Error receiving task update: %v", err)
+			log.Error().Msg(fmt.Sprintf("Error receiving task update: %v", err))
 			return
 		}
 
 		if statusChange, ok := resp.Event.(*pb.WatchTasksResponse_TaskStatusChange); ok {
-			log.Printf("[INFO] Task %s status changed: %v -> %v",
+			log.Info().Msg(fmt.Sprintf("Task %s status changed: %v -> %v",
 				statusChange.TaskStatusChange.Task.Id,
 				statusChange.TaskStatusChange.PreviousStatus,
 				statusChange.TaskStatusChange.CurrentStatus,
-			)
+			))
 		}
 	}
 }
@@ -104,9 +106,9 @@ func (c *computeClient) cancelTask(taskID string) error {
 	}
 
 	if resp.Success {
-		log.Printf("[INFO] Task %s canceled successfully", taskID)
+		log.Info().Msg(fmt.Sprintf("Task %s canceled successfully", taskID))
 	} else {
-		log.Printf("[ERROR] Failed to cancel task %s: %s", taskID, resp.ErrorMessage)
+		log.Error().Msg(fmt.Sprintf("Failed to cancel task %s: %s", taskID, resp.ErrorMessage))
 	}
 	return nil
 }
@@ -122,16 +124,16 @@ func (c *computeClient) close() {
 func StartCompute() {
 	client, err := newComputeClient("localhost:50051", "compute-node-1")
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to create compute client: %v", err)
+		log.Fatal().Msg(fmt.Sprintf("Failed to create compute client: %v", err))
 	}
 	defer client.close()
 
 	payload := []byte("sample compute payload")
 	err = client.submitTask(pb.Task_TASK_TYPE_COMPUTE, payload)
 	if err != nil {
-		log.Fatalf("[FATAL] Failed to submit task: %v", err)
+		log.Fatal().Msg(fmt.Sprintf("Failed to submit task: %v", err))
 	}
 
-	log.Println("[INFO] Compute client is observing task updates")
+	log.Info().Msg(fmt.Sprintf("Compute client is observing task updates"))
 	time.Sleep(1 * time.Minute) // Simulate runtime to keep the application alive
 }
